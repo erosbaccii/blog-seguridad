@@ -1,0 +1,50 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { useTranslations, localizedPath, otherLang, type Lang } from '../i18n';
+import { SITE } from '../config/site';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const proyectos = [
+  { ...t.projects.windowsAuditor, url: SITE.projects.windowsAuditor },
+  { ...t.projects.tprm, url: SITE.projects.tprm },
+];
+---
+
+<BaseLayout lang={lang} title={t.projects.title} description={t.projects.intro} translationUrl={localizedPath(otherLang(lang), 'projects')}>
+  <section class="container page-head">
+    <h1>{t.projects.title}</h1>
+    <p class="lead">{t.projects.intro}</p>
+  </section>
+  <section class="container">
+    <ul class="grid" role="list">
+      {
+        proyectos.map((p) => (
+          <li class="card project">
+            <p class="eyebrow">{p.stack}</p>
+            <h2>{p.name}</h2>
+            <p>{p.description}</p>
+            <p><span class="todo">{p.todo}</span></p>
+            {p.url ? (
+              <a class="btn btn-secondary" href={p.url} target="_blank" rel="noopener">
+                {t.projects.viewOnGithub} <span class="visually-hidden">{t.a11y.externalLink}</span>
+              </a>
+            ) : (
+              <span class="todo">{t.projects.linkPending}</span>
+            )}
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</BaseLayout>
+
+<style>
+  .grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+  @media (min-width: 48rem) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  .project { border-top: 3px solid var(--color-accent-2); }
+  .project h2 { font-size: 1.35rem; }
+</style>

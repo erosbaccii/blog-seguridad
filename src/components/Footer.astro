@@ -1,0 +1,39 @@
+---
+import { useTranslations, fmt, type Lang } from '../i18n';
+import { SITE } from '../config/site';
+
+interface Props {
+  lang: Lang;
+}
+const t = useTranslations(Astro.props.lang);
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container inner">
+    <p class="who">© {year} · {fmt(t.footer.rights, { name: SITE.author })}</p>
+    <ul class="links">
+      <li><a href={SITE.linkedin} rel="me noopener" target="_blank">LinkedIn <span class="visually-hidden">{t.a11y.externalLink}</span></a></li>
+      <li><a href={SITE.github} rel="me noopener" target="_blank">GitHub <span class="visually-hidden">{t.a11y.externalLink}</span></a></li>
+    </ul>
+    <p class="note">{t.footer.privacy}</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: 4rem;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+  }
+  .inner { display: grid; gap: 0.5rem; padding-block: 2rem; }
+  .inner p { margin: 0; }
+  .links { list-style: none; display: flex; gap: 1.25rem; margin: 0; padding: 0; }
+  .links a { display: inline-block; padding-block: 0.6rem; }
+  @media (min-width: 48rem) {
+    .inner { grid-template-columns: 1fr auto; align-items: center; }
+    .note { grid-column: 1 / -1; }
+  }
+</style>

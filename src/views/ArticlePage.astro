@@ -1,0 +1,296 @@
+---
+import { render } from 'astro:content';
+import { Image, getImage } from 'astro:assets';
+import { SITE } from '../config/site';
+import DocsLayout from '../layouts/DocsLayout.astro';
+import Breadcrumb from '../components/docs/Breadcrumb.astro';
+import Toc from '../components/docs/Toc.astro';
+import Feedback from '../components/docs/Feedback.astro';
+import Icon from '../components/Icon.astro';
+import { useTranslations, formatDate, fmt, localizedPath, otherLang, type Lang } from '../i18n';
+import { getArticulos, readingTime, slugOf, type Articulo } from '../lib/articulos';
+import { navArticulos } from '../lib/navegacion';
+
+interface Props {
+  lang: Lang;
+  slug: string;
+  entry?: Articulo;
+  alternate?: Articulo;
+}
+const { lang, slug, entry, alternate } = Astro.props;
+const t = useTranslations(lang);
+const other = otherLang(lang);
+const href = localizedPath(lang, 'articles', slug);
+const translationUrl = localizedPath(other, 'articles', slug);
+const listUrl = localizedPath(lang, 'articles');
+const { Content, headings } = entry ? await render(entry) : { Content: null, headings: [] };
+const data = entry?.data;
+const groups = await navArticulos(lang, href);
+
+// Anterior / siguiente dentro de la misma categoría (orden cronológico)
+let prev: Articulo | undefined;
+let next: Articulo | undefined;
+if (data) {
+  const misma = (await getArticulos(lang))
+    .filter((a) => a.data.category === data.category)
+    .sort((a, b) => a.data.pubDate.valueOf() - b.data.pubDate.valueOf());
+  const i = misma.findIndex((a) => slugOf(a) === slug);
+  prev = misma[i - 1];
+  next = misma[i + 1];
+}
+
+// Imagen para compartir: la portada recortada a 1200×630 o, si no hay, la imagen por defecto
+const ogImage = data?.cover
+  ? {
+      src: (await getImage({ src: data.cover, width: 1200, height: 630, fit: 'cover', format: 'jpg' })).src,
+      alt: data.coverAlt ?? data.title,
+      width: 1200,
+      height: 630,
+    }
+  : undefined;
+
+// Datos estructurados (schema.org) para buscadores
+const jsonLd = data && {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: data.title,
+  description: data.description,
+  inLanguage: t.meta.dateLocale,
+  datePublished: data.pubDate.toISOString(),
+  dateModified: (data.updatedDate ?? data.pubDate).toISOString(),
+  url: new URL(href, Astro.site).href,
+  mainEntityOfPage: new URL(href, Astro.site).href,
+  image: new URL(ogImage?.src ?? `/og/default-${lang}.png`, Astro.site).href,
+  keywords: data.tags.join(', '),
+  articleSection: t.categories[data.category],
+  author: { '@type': 'Person', name: SITE.author, url: SITE.linkedin },
+  ...(alternate ? { workTranslation: new URL(translationUrl, Astro.site).href } : {}),
+};
+
+const docsProps = {
+  lang,
+  translationUrl,
+  navLabel: t.docs.sectionNavArticles,
+  groups,
+  emptyText: t.docs.emptyCategory,
+  rootLink: { label: t.docs.allArticles, href: listUrl },
+};
+---
+
+{
+  entry && data && Content ? (
+    <DocsLayout
+      {...docsProps}
+      title={data.title}
+      description={data.description}
+      hasTranslation={!!alternate}
+      ogType="article"
+      ogImage={ogImage}
+      publishedTime={data.pubDate}
+      modifiedTime={data.updatedDate}
+      tags={data.tags}
+      jsonLd={jsonLd}
+      pdf={data.pdf}
+      headings={headings}
+    >
+      <Breadcrumb
+        label={t.a11y.breadcrumb}
+        items={[
+          { label: t.nav.home, href: localizedPath(lang, 'home') },
+          { label: t.nav.articles, href: listUrl },
+          { label: t.categories[data.category], href: `${listUrl}?categoria=${data.category}` },
+        ]}
+      />
+      <article class="articulo">
+        <header class="art-head">
+          <p class="cat">
+            <Icon name={data.category} size={18} />
+            {t.categories[data.category]}
+          </p>
+          <h1>{data.title}</h1>
+          <p class="lead">{data.description}</p>
+          <p class="meta">
+            <span>
+              {t.articles.published}{' '}
+              <time datetime={data.pubDate.toISOString()}>{formatDate(data.pubDate, lang)}</time>
+            </span>
+            {data.updatedDate && (
+              <span>
+                {t.articles.updated}{' '}
+                <time datetime={data.updatedDate.toISOString()}>{formatDate(data.updatedDate, lang)}</time>
+              </span>
+            )}
+            <span>{fmt(t.articles.readingTime, { n: readingTime(entry.body) })}</span>
+          </p>
+          <ul class="chips" role="list">
+            {data.draft && <li class="chip chip-draft">{t.articles.draft}</li>}
+            <li class="chip">{t.levels[data.nivel]}</li>
+            {data.publico.map((p) => <li class="chip chip-muted">{t.audiences[p]}</li>)}
+          </ul>
+          {alternate && (
+            <p class="other-lang">
+              <a href={translationUrl} hreflang={other} lang={other}>{t.articles.readInOther}</a>
+            </p>
+          )}
+        </header>
+
+        <div class="only-below-xl">
+          <Toc headings={headings} title={t.docs.onThisPage} variant="dropdown" />
+        </div>
+
+        {data.cover && <Image class="cover" src={data.cover} alt={data.coverAlt ?? ''} widths={[480, 800, 1200]} sizes="(min-width: 75rem) 800px, 100vw" />}
+
+        {lang === 'en' && t.articles.localResourcesNote && data.translationOf && (
+          <p class="local-note">{t.articles.localResourcesNote}</p>
+        )}
+
+        <div class="prose" data-prose data-copy={t.docs.copy} data-copied={t.docs.copied}>
+          <Content />
+        </div>
+
+        {data.tags.length > 0 && (
+          <div class="tags">
+            <h2 class="visually-hidden">{t.articles.tags}</h2>
+            <ul class="chips" role="list">
+              {data.tags.map((tag) => <li class="chip chip-muted">#{tag}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {(prev || next) && (
+          <nav class="pager" aria-label={`${t.docs.prev} / ${t.docs.next}`}>
+            {prev ? (
+              <a class="pg prev" href={localizedPath(lang, 'articles', slugOf(prev))} rel="prev">
+                <span class="pg-label"><Icon name="arrow-left" size={16} />{t.docs.prev}</span>
+                <span class="pg-title">{prev.data.title}</span>
+              </a>
+            ) : <span />}
+            {next && (
+              <a class="pg next" href={localizedPath(lang, 'articles', slugOf(next))} rel="next">
+                <span class="pg-label">{t.docs.next}<Icon name="arrow-right" size={16} /></span>
+                <span class="pg-title">{next.data.title}</span>
+              </a>
+            )}
+          </nav>
+        )}
+
+        <div class="only-below-xl">
+          <Feedback lang={lang} />
+        </div>
+      </article>
+    </DocsLayout>
+  ) : (
+    <DocsLayout {...docsProps} title={t.articles.notAvailableTitle} noindex>
+      <Breadcrumb
+        label={t.a11y.breadcrumb}
+        items={[{ label: t.nav.home, href: localizedPath(lang, 'home') }, { label: t.nav.articles, href: listUrl }]}
+      />
+      <section class="art-head">
+        <h1>{t.articles.notAvailableTitle}</h1>
+        <p class="lead">{t.articles.notAvailableBody}</p>
+        {alternate && (
+          <p>
+            <a class="btn btn-primary" href={translationUrl} hreflang={other} lang={other}>
+              {t.articles.notAvailableLink}: <span lang={other}>{alternate.data.title}</span>
+            </a>
+          </p>
+        )}
+        <p><a href={listUrl}>{t.articles.backToList}</a></p>
+      </section>
+    </DocsLayout>
+  )
+}
+
+<script>
+  import { ICONOS } from '../icons/iconos.mjs';
+
+  // Bloques de código: etiqueta de lenguaje + botón "Copiar"
+  const svg = (name: string) =>
+    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[name]
+      .map((d) => `<path d="${d}"/>`)
+      .join('')}</svg>`;
+
+  document.querySelectorAll<HTMLElement>('[data-prose]').forEach((prose) => {
+    const copyText = prose.dataset.copy ?? 'Copy';
+    const copiedText = prose.dataset.copied ?? 'Copied';
+    prose.querySelectorAll<HTMLPreElement>('pre.astro-code').forEach((pre) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'code-block';
+      pre.replaceWith(wrap);
+      wrap.append(pre);
+      const lang = pre.dataset.language;
+      if (lang && lang !== 'plaintext') {
+        const tag = document.createElement('span');
+        tag.className = 'code-lang';
+        tag.textContent = lang;
+        wrap.classList.add('has-lang');
+        wrap.prepend(tag);
+      }
+      if (!navigator.clipboard) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'copy-btn';
+      const label = (copied: boolean) => {
+        btn.innerHTML = `${svg(copied ? 'check' : 'copy')}<span>${copied ? copiedText : copyText}</span>`;
+        btn.dataset.copied = String(copied);
+      };
+      label(false);
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(pre.innerText.replace(/\n$/, ''));
+          label(true);
+          setTimeout(() => label(false), 2000);
+        } catch {
+          /* el navegador no dio permiso */
+        }
+      });
+      wrap.append(btn);
+    });
+  });
+</script>
+
+<style>
+  .articulo { max-width: calc(var(--maxw-prose) + 2rem); }
+  .art-head { padding: 1.25rem 0 1.5rem; max-width: var(--maxw-prose); }
+  .cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+  .cat :global(svg) { color: var(--color-accent-2-text); }
+  h1 { font-size: clamp(1.9rem, 1.5rem + 1.8vw, 2.5rem); margin-bottom: 0.5rem; }
+  .meta { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin: 0 0 1rem; font-size: 0.88rem; color: var(--color-text-muted); }
+  .meta time { color: var(--color-text); }
+  .other-lang { margin: 1rem 0 0; font-size: 0.9rem; }
+  .cover { width: 100%; border-radius: var(--radius); margin-bottom: 2rem; border: 1px solid var(--color-border); }
+  .local-note {
+    max-width: var(--maxw-prose);
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--color-accent-2);
+    background: var(--color-accent-2-bg);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+  }
+  .tags { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border); max-width: var(--maxw-prose); }
+
+  .pager { display: grid; gap: 0.75rem; margin-top: 2.5rem; max-width: var(--maxw-prose); }
+  @media (min-width: 40rem) { .pager { grid-template-columns: 1fr 1fr; } }
+  .pg {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+  .pg:hover { border-color: var(--color-accent); text-decoration: none; }
+  .pg.next { text-align: right; grid-column: 2; }
+  .pg-label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--color-text-muted); }
+  .next .pg-label { justify-content: flex-end; }
+  .pg-title { font-weight: 600; color: var(--color-accent); }
+  @media (max-width: 39.99rem) { .pg.next { grid-column: auto; } }
+</style>

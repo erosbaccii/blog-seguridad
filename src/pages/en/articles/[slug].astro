@@ -1,0 +1,12 @@
+---
+import ArticlePage from '../../../views/ArticlePage.astro';
+import { getRutasArticulos } from '../../../lib/articulos';
+
+export async function getStaticPaths() {
+  return getRutasArticulos('en');
+}
+
+const { slug, entry, alternate } = Astro.props;
+---
+
+<ArticlePage lang="en" slug={slug} entry={entry} alternate={alternate} />

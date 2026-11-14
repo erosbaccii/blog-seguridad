@@ -1,0 +1,135 @@
+---
+import Icon from '../Icon.astro';
+
+interface Props {
+  headings: { depth: number; slug: string; text: string }[];
+  title: string;
+  variant: 'aside' | 'dropdown';
+}
+const { headings, title, variant } = Astro.props;
+const items = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{
+  items.length > 0 &&
+    (variant === 'aside' ? (
+      <nav class="toc" aria-label={title}>
+        <p class="toc-title">{title}</p>
+        <ul role="list">
+          {items.map((h) => (
+            <li class={`d${h.depth}`}>
+              <a href={`#${h.slug}`} data-toc-link={h.slug}>{h.text}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    ) : (
+      <details class="toc-dropdown">
+        <summary>
+          <Icon name="list" size={18} />
+          {title}
+          <Icon name="chevron" size={14} class="caret" />
+        </summary>
+        <nav aria-label={title}>
+          <ul role="list">
+            {items.map((h) => (
+              <li class={`d${h.depth}`}>
+                <a href={`#${h.slug}`} data-toc-link={h.slug}>{h.text}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </details>
+    ))
+}
+
+<script>
+  // Resalta en el índice la sección que se está leyendo.
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
+  const ids = [...new Set(links.map((l) => l.dataset.tocLink!))];
+  const targets = ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
+
+  if (targets.length) {
+    const setActive = (id: string) =>
+      links.forEach((l) => {
+        if (l.dataset.tocLink === id) l.setAttribute('aria-current', 'location');
+        else l.removeAttribute('aria-current');
+      });
+
+    const update = () => {
+      const offset = parseFloat(getComputedStyle(document.documentElement).fontSize) * 6;
+      let current = targets[0].id;
+      for (const el of targets) {
+        if (el.getBoundingClientRect().top - offset <= 0) current = el.id;
+        else break;
+      }
+      setActive(current);
+    };
+    let ticking = false;
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          update();
+          ticking = false;
+        });
+      },
+      { passive: true },
+    );
+    update();
+
+    // En el desplegable, al elegir una sección se cierra.
+    document.querySelectorAll<HTMLDetailsElement>('.toc-dropdown').forEach((d) =>
+      d.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('a')) d.open = false;
+      }),
+    );
+  }
+</script>
+
+<style>
+  .toc-title {
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--color-border); }
+  li a {
+    display: block;
+    padding: 0.3rem 0 0.3rem 0.85rem;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--color-text-muted);
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+  li.d3 a { padding-left: 1.7rem; font-size: 0.83rem; }
+  li a:hover { color: var(--color-accent); text-decoration: none; }
+  li a[aria-current='location'] { color: var(--color-accent); border-left-color: var(--color-accent); font-weight: 600; }
+
+  .toc-dropdown {
+    margin: 0 0 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    max-width: var(--maxw-prose);
+  }
+  .toc-dropdown summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.5rem 0.85rem;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .toc-dropdown summary::-webkit-details-marker { display: none; }
+  .toc-dropdown :global(.caret) { margin-left: auto; transition: transform 0.15s; color: var(--color-text-muted); }
+  .toc-dropdown[open] :global(.caret) { transform: rotate(90deg); }
+  .toc-dropdown nav { padding: 0 0.85rem 0.85rem; }
+</style>

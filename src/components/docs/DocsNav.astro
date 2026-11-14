@@ -1,0 +1,200 @@
+---
+import Icon from '../Icon.astro';
+import { useTranslations, type Lang } from '../../i18n';
+import type { NavGroup } from '../../lib/navegacion';
+
+interface Props {
+  lang: Lang;
+  label: string;
+  groups: NavGroup[];
+  emptyText: string;
+  rootLink?: { label: string; href: string; current?: boolean };
+  pdf?: string;
+}
+const { lang, label, groups, emptyText, rootLink, pdf } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<div class="nav-top">
+  <div class="search">
+    <Icon name="search" size={16} />
+    <input type="search" placeholder={t.docs.search} aria-label={t.docs.search} aria-controls="docs-tree" autocomplete="off" data-nav-search />
+  </div>
+  <button
+    type="button"
+    class="nav-icon-btn collapse-btn"
+    aria-label={t.docs.collapse}
+    aria-controls="docs-tree"
+    aria-expanded="true"
+    data-label-collapse={t.docs.collapse}
+    data-label-expand={t.docs.expand}
+    data-nav-collapse
+  >
+    <Icon name="chevrons-left" size={18} class="i-collapse" />
+    <Icon name="chevrons-right" size={18} class="i-expand" />
+  </button>
+  <button type="button" class="nav-icon-btn close-btn" aria-label={t.docs.closeNav} data-nav-close>
+    <Icon name="chevrons-left" size={18} />
+  </button>
+</div>
+
+<nav id="docs-tree" class="tree" aria-label={label}>
+  {
+    rootLink && (
+      <a class="root-link" href={rootLink.href} aria-current={rootLink.current ? 'page' : undefined}>
+        {rootLink.label}
+      </a>
+    )
+  }
+  <ul class="groups" role="list">
+    {
+      groups.map((g) => (
+        <li data-group>
+          <details data-group-id={g.id} open={g.current || undefined}>
+            <summary>
+              <Icon name="chevron" size={14} class="caret" />
+              <Icon name={g.icon} size={18} class="g-icon" />
+              <span>{g.label}</span>
+            </summary>
+            <ul role="list">
+              {g.items.length === 0 ? (
+                <li class="empty">{emptyText}</li>
+              ) : (
+                g.items.map((i) => (
+                  <li data-title={i.label}>
+                    <a href={i.href} aria-current={i.current ? 'page' : undefined}>{i.label}</a>
+                  </li>
+                ))
+              )}
+            </ul>
+          </details>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="no-matches" hidden data-no-matches>{t.docs.noMatches}</p>
+</nav>
+
+{
+  pdf && (
+    <div class="nav-foot">
+      <a class="btn btn-secondary pdf" href={pdf} download>
+        <Icon name="download" size={18} />
+        {t.articles.downloadPdf}
+      </a>
+    </div>
+  )
+}
+
+<style>
+  .nav-top {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.9rem 0.9rem 0.6rem;
+  }
+  .search {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0 0.6rem;
+    min-height: 38px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+  }
+  .search:focus-within { border-color: var(--color-accent); outline: 2px solid var(--color-focus); outline-offset: 1px; }
+  .search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 0.4rem 0;
+  }
+  .search input:focus { outline: none; }
+  .search input::placeholder { color: var(--color-text-muted); opacity: 1; }
+  .nav-icon-btn {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+  .nav-icon-btn:hover { color: var(--color-accent); border-color: var(--color-accent); }
+  .collapse-btn :global(.i-expand) { display: none; }
+
+  .tree { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0.25rem 0.6rem 1rem; font-size: 0.92rem; }
+  .root-link {
+    display: block;
+    padding: 0.45rem 0.6rem;
+    margin-bottom: 0.25rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-weight: 600;
+  }
+  .groups, .groups ul { list-style: none; margin: 0; padding: 0; }
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.4rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-text);
+    list-style: none;
+    line-height: 1.35;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { background: var(--color-accent-bg); }
+  summary :global(.caret) { flex: none; color: var(--color-text-muted); transition: transform 0.15s; }
+  details[open] > summary :global(.caret) { transform: rotate(90deg); }
+  summary :global(.g-icon) { flex: none; color: var(--color-accent-2-text); }
+  details ul { margin: 0.1rem 0 0.4rem 1.05rem; border-left: 1px solid var(--color-border); }
+  details li a, .empty {
+    display: block;
+    padding: 0.4rem 0.6rem 0.4rem 0.9rem;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--color-text);
+    line-height: 1.4;
+  }
+  .empty { color: var(--color-text-muted); font-style: italic; font-size: 0.88rem; }
+  details li a:hover { color: var(--color-accent); text-decoration: none; border-left-color: var(--color-border); }
+  a[aria-current='page'] {
+    background: var(--color-surface);
+    border-left-color: var(--color-accent) !important;
+    color: var(--color-accent) !important;
+    font-weight: 600;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .root-link[aria-current='page'] { border-left: 3px solid var(--color-accent); border-radius: var(--radius-sm); }
+  .no-matches { padding: 0.5rem 0.6rem; color: var(--color-text-muted); font-size: 0.88rem; }
+
+  .nav-foot { padding: 0.75rem 0.9rem; border-top: 1px solid var(--color-border); background: var(--color-panel); }
+  .pdf { width: 100%; justify-content: center; }
+
+  /* El botón de cerrar es solo para el panel deslizable en celular; el de colapsar, solo en escritorio */
+  .collapse-btn { display: none; }
+  @media (min-width: 54rem) {
+    .close-btn { display: none; }
+    .collapse-btn { display: inline-grid; }
+    /* Navegación colapsada a una franja con el botón » */
+    :global(html[data-nav-collapsed='true']) .search,
+    :global(html[data-nav-collapsed='true']) .tree,
+    :global(html[data-nav-collapsed='true']) .nav-foot { display: none; }
+    :global(html[data-nav-collapsed='true']) .nav-top { padding-inline: 0.45rem; }
+    :global(html[data-nav-collapsed='true']) .collapse-btn :global(.i-collapse) { display: none; }
+    :global(html[data-nav-collapsed='true']) .collapse-btn :global(.i-expand) { display: block; }
+  }
+</style>

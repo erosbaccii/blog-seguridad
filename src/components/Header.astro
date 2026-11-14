@@ -1,0 +1,194 @@
+---
+import { useTranslations, localizedPath, type Lang, type RouteKey } from '../i18n';
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: Lang;
+  translationUrl: string;
+}
+const { lang, translationUrl } = Astro.props;
+const t = useTranslations(lang);
+
+const items: RouteKey[] = ['articles', 'training', 'projects', 'about'];
+const current = Astro.url.pathname;
+const home = localizedPath(lang, 'home');
+const isActive = (key: RouteKey) => current.startsWith(localizedPath(lang, key));
+---
+
+<header class="site-header" data-header>
+  <div class="bar">
+    <a class="brand" href={home} aria-current={current === home ? 'page' : undefined}>
+      <span class="logo" aria-hidden="true">EB</span>
+      <span class="name">{t.meta.siteName}</span>
+    </a>
+
+    <nav id="nav-principal" class="nav" aria-label={t.a11y.mainNav}>
+      <ul>
+        {
+          items.map((key) => (
+            <li>
+              <a href={localizedPath(lang, key)} aria-current={isActive(key) ? 'page' : undefined}>
+                {t.nav[key]}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="controls">
+      <LanguageSwitcher lang={lang} href={translationUrl} />
+      <ThemeToggle lang={lang} />
+      <button
+        class="icon-btn menu-btn"
+        type="button"
+        aria-expanded="false"
+        aria-controls="nav-principal"
+        data-label-open={t.a11y.openMenu}
+        data-label-close={t.a11y.closeMenu}
+        aria-label={t.a11y.openMenu}
+      >
+        <Icon name="menu" />
+      </button>
+    </div>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  const btn = document.querySelector<HTMLButtonElement>('.menu-btn');
+  const nav = document.getElementById('nav-principal');
+
+  // Desenfoque del fondo al hacer scroll
+  if (header) {
+    const onScroll = () => (header.dataset.scrolled = String(window.scrollY > 4));
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  if (btn && nav) {
+    const set = (open: boolean) => {
+      btn.setAttribute('aria-expanded', String(open));
+      btn.setAttribute('aria-label', (open ? btn.dataset.labelClose : btn.dataset.labelOpen) ?? '');
+      nav.dataset.open = String(open);
+    };
+    btn.addEventListener('click', () => set(btn.getAttribute('aria-expanded') !== 'true'));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
+        set(false);
+        btn.focus();
+      }
+    });
+  }
+</script>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.2s;
+  }
+  .site-header[data-scrolled='true'] {
+    background: var(--color-header);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: var(--header-h);
+    padding-inline: var(--gutter);
+    max-width: 100rem;
+    margin-inline: auto;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--color-text);
+    font-weight: 600;
+    min-height: 44px;
+    margin-right: auto;
+    white-space: nowrap;
+  }
+  .brand:hover { text-decoration: none; }
+  .logo {
+    display: inline-grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 7px;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    box-shadow: 3px 3px 0 var(--color-accent-2);
+  }
+  .controls { display: flex; align-items: center; gap: 0.3rem; }
+  .icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  /* Celular: el menú se despliega debajo de la barra */
+  .nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.5rem var(--gutter) 0.75rem;
+  }
+  .nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+  .nav a {
+    display: block;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-weight: 500;
+    font-size: 0.95rem;
+  }
+  .nav a:hover { background: var(--color-accent-bg); text-decoration: none; }
+  .nav a[aria-current='page'] { color: var(--color-accent); }
+  :global(html.js) .nav:not([data-open='true']) { display: none; }
+  :global(html:not(.js)) .menu-btn { display: none; }
+  :global(html:not(.js)) .nav { position: static; }
+
+  @media (min-width: 52rem) {
+    .menu-btn { display: none; }
+    .nav, :global(html.js) .nav:not([data-open='true']) {
+      display: block;
+      position: absolute;
+      left: 50%;
+      top: 0;
+      right: auto;
+      transform: translateX(-50%);
+      background: none;
+      border: 0;
+      padding: 0;
+      height: 100%;
+    }
+    .nav ul { display: flex; gap: 0.25rem; height: 100%; }
+    .nav li { display: flex; }
+    .nav a { display: flex; align-items: center; border-radius: 0; padding: 0 0.85rem; box-shadow: inset 0 -2px 0 transparent; }
+    .nav a:hover { background: none; box-shadow: inset 0 -2px 0 var(--color-border); }
+    .nav a[aria-current='page'] { box-shadow: inset 0 -2px 0 var(--color-accent); }
+    .bar { position: relative; }
+  }
+</style>

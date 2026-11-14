@@ -1,0 +1,145 @@
+/*
+ * Paleta del sitio. ÚNICO lugar donde se escriben colores.
+ * Los componentes usan solo las variables semánticas (--color-*).
+ *
+ * Valores crudos: --l-* (modo claro) y --d-* (modo oscuro).
+ * scripts/contraste.mjs lee este archivo y verifica WCAG AA.
+ */
+
+:root {
+  /* ---------- Modo claro (valores crudos) ---------- */
+  --l-bg: #F8FAFC;
+  --l-surface: #FFFFFF;
+  --l-border: #E2E8F0;
+  --l-text: #1E293B;
+  --l-text-muted: #64748B;
+  --l-accent: #2563EB;
+  --l-accent-2: #38BDF8; /* SOLO decorativo en modo claro: nunca texto ni links */
+  --l-on-accent: #FFFFFF;
+  --l-success: #16A34A;
+  --l-warning: #D97706;
+  --l-danger: #DC2626;
+  /* Variantes para TEXTO (los tonos de arriba no llegan a 4.5:1 sobre fondo claro) */
+  --l-success-text: #15803D;
+  --l-warning-text: #B45309;
+  --l-danger-text: #B91C1C;
+
+  /* ---------- Modo oscuro (valores crudos) ---------- */
+  --d-bg: #0F172A;
+  --d-surface: #1E293B;
+  --d-border: #334155;
+  --d-text: #F1F5F9;
+  --d-text-muted: #94A3B8;
+  --d-accent: #60A5FA;
+  --d-accent-2: #38BDF8;
+  --d-on-accent: #0F172A;
+  --d-success: #4ADE80;
+  --d-warning: #FBBF24;
+  --d-danger: #F87171;
+  --d-success-text: #4ADE80;
+  --d-warning-text: #FBBF24;
+  --d-danger-text: #F87171;
+
+  /* ---------- Decorativos (nunca texto) ---------- */
+  --violet: #A78BFA; /* toque violeta suave de la ilustración del banner */
+}
+
+/* ---------- Asignación semántica: claro por defecto ---------- */
+:root {
+  color-scheme: light;
+  --color-bg: var(--l-bg);
+  --color-surface: var(--l-surface);
+  --color-border: var(--l-border);
+  --color-text: var(--l-text);
+  --color-text-muted: var(--l-text-muted);
+  --color-accent: var(--l-accent);
+  --color-accent-2: var(--l-accent-2);
+  --color-on-accent: var(--l-on-accent);
+  --color-success: var(--l-success);
+  --color-warning: var(--l-warning);
+  --color-danger: var(--l-danger);
+  --color-success-text: var(--l-success-text);
+  --color-warning-text: var(--l-warning-text);
+  --color-danger-text: var(--l-danger-text);
+  /* En claro, el acento secundario no sirve para texto: se usa el principal */
+  --color-accent-2-text: var(--l-accent);
+}
+
+/* Bloque oscuro reutilizado (sistema u opción elegida con el botón) */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: var(--d-bg);
+  --color-surface: var(--d-surface);
+  --color-border: var(--d-border);
+  --color-text: var(--d-text);
+  --color-text-muted: var(--d-text-muted);
+  --color-accent: var(--d-accent);
+  --color-accent-2: var(--d-accent-2);
+  --color-on-accent: var(--d-on-accent);
+  --color-success: var(--d-success);
+  --color-warning: var(--d-warning);
+  --color-danger: var(--d-danger);
+  --color-success-text: var(--d-success-text);
+  --color-warning-text: var(--d-warning-text);
+  --color-danger-text: var(--d-danger-text);
+  --color-accent-2-text: var(--d-accent-2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: var(--d-bg);
+    --color-surface: var(--d-surface);
+    --color-border: var(--d-border);
+    --color-text: var(--d-text);
+    --color-text-muted: var(--d-text-muted);
+    --color-accent: var(--d-accent);
+    --color-accent-2: var(--d-accent-2);
+    --color-on-accent: var(--d-on-accent);
+    --color-success: var(--d-success);
+    --color-warning: var(--d-warning);
+    --color-danger: var(--d-danger);
+    --color-success-text: var(--d-success-text);
+    --color-warning-text: var(--d-warning-text);
+    --color-danger-text: var(--d-danger-text);
+    --color-accent-2-text: var(--d-accent-2);
+  }
+}
+
+/* ---------- Derivados (siempre a partir de la paleta) ---------- */
+:root {
+  --tint: 9%;
+  --color-success-bg: color-mix(in srgb, var(--color-success) var(--tint), var(--color-surface));
+  --color-warning-bg: color-mix(in srgb, var(--color-warning) var(--tint), var(--color-surface));
+  --color-danger-bg: color-mix(in srgb, var(--color-danger) var(--tint), var(--color-surface));
+  --color-accent-bg: color-mix(in srgb, var(--color-accent) var(--tint), var(--color-surface));
+  --color-accent-2-bg: color-mix(in srgb, var(--color-accent-2) 14%, var(--color-surface));
+  --color-focus: var(--color-accent);
+
+  /* Columnas laterales y tarjetas de portada: un tono apenas distinto del fondo */
+  --color-panel: color-mix(in srgb, var(--color-surface) 55%, var(--color-bg));
+  --color-card-blue: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+  --color-header: color-mix(in srgb, var(--color-surface) 82%, transparent);
+
+  /* Banner de la portada: oscuro azulado en los dos modos */
+  --hero-bg: var(--d-bg);
+  --hero-bg-2: color-mix(in srgb, var(--l-accent) 28%, var(--d-bg));
+  --hero-text: var(--d-text);
+  --hero-text-muted: var(--d-text-muted);
+  --hero-accent: var(--d-accent);
+  --hero-on-accent: var(--d-on-accent);
+  --hero-border: var(--d-border);
+
+  /* Resaltado de código (tema "css-variables" de Shiki) con colores ya verificados */
+  --astro-code-foreground: var(--color-text);
+  --astro-code-background: var(--color-surface);
+  --astro-code-token-keyword: var(--color-accent);
+  --astro-code-token-string: var(--color-success-text);
+  --astro-code-token-string-expression: var(--color-success-text);
+  --astro-code-token-comment: var(--color-text-muted);
+  --astro-code-token-constant: var(--color-warning-text);
+  --astro-code-token-parameter: var(--color-warning-text);
+  --astro-code-token-function: var(--color-danger-text);
+  --astro-code-token-punctuation: var(--color-text-muted);
+  --astro-code-token-link: var(--color-accent);
+}

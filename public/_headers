@@ -1,0 +1,24 @@
+# Cabeceras HTTP para Cloudflare Pages.
+# CSP estricta: sin 'unsafe-inline' ni 'unsafe-eval'. Todo el JS y el CSS del sitio son archivos propios.
+# Únicos terceros permitidos: Cloudflare Web Analytics (sin cookies), que Cloudflare inserta al activarlo.
+# scripts/verificar-csp.mjs revisa en cada build que el HTML no tenga nada que esta política bloquearía.
+
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://cloudflareinsights.com; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=(), browsing-topics=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  X-Permitted-Cross-Domain-Policies: none
+
+# Archivos con hash en el nombre: se pueden cachear para siempre
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# PDFs descargables: que se descarguen, no que se ejecuten en otro contexto
+/descargas/*
+  X-Content-Type-Options: nosniff
+  Content-Disposition: attachment

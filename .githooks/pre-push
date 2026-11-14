@@ -1,0 +1,4 @@
+#!/bin/sh
+# Hook de git: revisa datos personales antes de cada push y lo frena si encuentra algo.
+# Se activa (una sola vez, en este repo) con: git config core.hooksPath .githooks
+exec node scripts/verificar-privacidad.mjs --pre-push

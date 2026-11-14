@@ -1,0 +1,238 @@
+---
+/*
+ * Layout de documentación (artículos y entrenamiento):
+ *  - escritorio (>1200px): navegación | contenido | "En este artículo"
+ *  - laptop/tablet: navegación | contenido (el índice pasa a un desplegable)
+ *  - celular: contenido; la navegación es un panel deslizable
+ */
+import BaseLayout, { type Props as BaseProps } from './BaseLayout.astro';
+import DocsNav from '../components/docs/DocsNav.astro';
+import Toc from '../components/docs/Toc.astro';
+import Feedback from '../components/docs/Feedback.astro';
+import Icon from '../components/Icon.astro';
+import { useTranslations, type Lang } from '../i18n';
+import type { NavGroup } from '../lib/navegacion';
+
+interface Props extends BaseProps {
+  lang: Lang;
+  navLabel: string;
+  groups: NavGroup[];
+  emptyText: string;
+  rootLink?: { label: string; href: string; current?: boolean };
+  pdf?: string;
+  headings?: { depth: number; slug: string; text: string }[];
+}
+const { lang, navLabel, groups, emptyText, rootLink, pdf, headings = [], ...base } = Astro.props;
+const t = useTranslations(lang);
+const hasToc = headings.some((h) => h.depth === 2 || h.depth === 3);
+---
+
+<BaseLayout lang={lang} {...base}>
+  <div class="docs" data-has-toc={hasToc ? 'true' : 'false'}>
+    <div class="backdrop" data-nav-backdrop></div>
+
+    <aside class="docs-nav" id="docs-nav" data-docs-nav>
+      <DocsNav lang={lang} label={navLabel} groups={groups} emptyText={emptyText} rootLink={rootLink} pdf={pdf} />
+    </aside>
+
+    <div class="docs-main">
+      <button type="button" class="open-nav" aria-controls="docs-nav" aria-expanded="false" data-nav-open>
+        <Icon name="list" size={18} />
+        {t.docs.openNav}
+      </button>
+      <slot />
+    </div>
+
+    {
+      hasToc && (
+        <aside class="docs-toc">
+          <div class="toc-sticky">
+            <Toc headings={headings} title={t.docs.onThisPage} variant="aside" />
+            <Feedback lang={lang} />
+          </div>
+        </aside>
+      )
+    }
+  </div>
+</BaseLayout>
+
+<script>
+  const root = document.documentElement;
+  const panel = document.querySelector<HTMLElement>('[data-docs-nav]');
+  const openBtn = document.querySelector<HTMLButtonElement>('[data-nav-open]');
+  const closeBtn = document.querySelector<HTMLButtonElement>('[data-nav-close]');
+  const backdrop = document.querySelector<HTMLElement>('[data-nav-backdrop]');
+  const collapseBtn = document.querySelector<HTMLButtonElement>('[data-nav-collapse]');
+  const search = document.querySelector<HTMLInputElement>('[data-nav-search]');
+  const store = {
+    get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
+  };
+
+  // ---- Panel deslizable (celular) ----
+  const setOpen = (open: boolean) => {
+    panel?.toggleAttribute('data-open', open);
+    backdrop?.toggleAttribute('data-open', open);
+    openBtn?.setAttribute('aria-expanded', String(open));
+    if (open) search?.focus({ preventScroll: true });
+    else openBtn?.focus();
+  };
+  openBtn?.addEventListener('click', () => setOpen(true));
+  closeBtn?.addEventListener('click', () => setOpen(false));
+  backdrop?.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && panel?.hasAttribute('data-open')) setOpen(false);
+  });
+
+  // ---- Colapsar la columna (escritorio), recordando la elección ----
+  const syncCollapse = () => {
+    const collapsed = root.dataset.navCollapsed === 'true';
+    collapseBtn?.setAttribute('aria-expanded', String(!collapsed));
+    collapseBtn?.setAttribute('aria-label', (collapsed ? collapseBtn.dataset.labelExpand : collapseBtn.dataset.labelCollapse) ?? '');
+  };
+  collapseBtn?.addEventListener('click', () => {
+    const collapsed = root.dataset.navCollapsed !== 'true';
+    if (collapsed) root.dataset.navCollapsed = 'true';
+    else delete root.dataset.navCollapsed;
+    store.set('nav-colapsada', collapsed ? '1' : '0');
+    syncCollapse();
+  });
+  syncCollapse();
+
+  // ---- Categorías abiertas: se recuerdan entre páginas ----
+  const groups = [...document.querySelectorAll<HTMLDetailsElement>('[data-group-id]')];
+  let abiertas: string[] = [];
+  try { abiertas = JSON.parse(store.get('nav-abiertas') ?? '[]'); } catch { abiertas = []; }
+  groups.forEach((d) => { if (abiertas.includes(d.dataset.groupId!)) d.open = true; });
+  let filtrando = false;
+  groups.forEach((d) =>
+    d.addEventListener('toggle', () => {
+      if (filtrando) return;
+      const ids = groups.filter((g) => g.open).map((g) => g.dataset.groupId!);
+      store.set('nav-abiertas', JSON.stringify(ids));
+    }),
+  );
+
+  // ---- Buscar por título: filtra el árbol en vivo ----
+  const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const noMatches = document.querySelector<HTMLElement>('[data-no-matches]');
+  const estadoInicial = new Map(groups.map((g) => [g, g.open]));
+  const filtrar = () => {
+    if (!search) return;
+    const q = normalizar(search.value.trim());
+    filtrando = true;
+    let total = 0;
+    groups.forEach((d) => {
+      const items = [...d.querySelectorAll<HTMLLIElement>('li[data-title]')];
+      let visibles = 0;
+      items.forEach((li) => {
+        const ok = !q || normalizar(li.dataset.title!).includes(q);
+        li.hidden = !ok;
+        if (ok) visibles++;
+      });
+      const groupLi = d.closest<HTMLLIElement>('[data-group]')!;
+      if (q) {
+        groupLi.hidden = visibles === 0;
+        d.open = visibles > 0;
+      } else {
+        groupLi.hidden = false;
+        d.open = estadoInicial.get(d) ?? false;
+      }
+      total += visibles;
+    });
+    if (noMatches) noMatches.hidden = !q || total > 0;
+    filtrando = false;
+  };
+  search?.addEventListener('input', filtrar);
+  // Escape (o la ✕) vacía el campo sin disparar "input" en todos los navegadores
+  search?.addEventListener('search', filtrar);
+  search?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setTimeout(filtrar);
+  });
+  groups.forEach((d) => d.addEventListener('toggle', () => { if (!filtrando && !search?.value) estadoInicial.set(d, d.open); }));
+</script>
+
+<style>
+  .docs {
+    --nav-w: 18rem;
+    --toc-w: 15rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 100rem;
+    margin-inline: auto;
+    width: 100%;
+  }
+  .docs-main { min-width: 0; padding: 0 var(--gutter) 3rem; }
+
+  /* ---- Celular: navegación como panel deslizable ---- */
+  .docs-nav {
+    position: fixed;
+    z-index: 55;
+    top: var(--header-h);
+    bottom: 0;
+    left: 0;
+    width: min(20rem, 88vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--color-panel);
+    border-right: 1px solid var(--color-border);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.25s ease, visibility 0.25s;
+  }
+  /* Al abrir se vuelve visible enseguida (para poder enfocar el buscador); al cerrar, después de deslizarse */
+  .docs-nav[data-open] { transform: none; visibility: visible; transition: transform 0.25s ease, visibility 0s; }
+  .backdrop {
+    position: fixed;
+    inset: var(--header-h) 0 0 0;
+    z-index: 54;
+    background: color-mix(in srgb, var(--d-bg) 55%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .backdrop[data-open] { opacity: 1; pointer-events: auto; }
+  .open-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 40px;
+    margin-top: 1rem;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .docs-toc { display: none; }
+
+  /* ---- Laptop / tablet: navegación fija a la izquierda ---- */
+  @media (min-width: 54rem) {
+    .docs { grid-template-columns: var(--nav-w) minmax(0, 1fr); }
+    :global(html[data-nav-collapsed='true']) .docs { --nav-w: 3.4rem; }
+    .docs-nav {
+      position: sticky;
+      top: var(--header-h);
+      height: calc(100vh - var(--header-h));
+      width: auto;
+      transform: none;
+      visibility: visible;
+      transition: none;
+      align-self: start;
+    }
+    .backdrop, .open-nav { display: none; }
+    .docs-main { padding: 0 2.5rem 4rem; }
+  }
+
+  /* ---- Escritorio: tercera columna "En este artículo" ---- */
+  @media (min-width: 75rem) {
+    .docs[data-has-toc='true'] { grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--toc-w); }
+    .docs-toc { display: block; padding: 2rem 1.25rem 2rem 0; }
+    .toc-sticky { position: sticky; top: calc(var(--header-h) + 1.5rem); max-height: calc(100vh - var(--header-h) - 3rem); overflow-y: auto; }
+    :global(.only-below-xl) { display: none !important; }
+  }
+</style>

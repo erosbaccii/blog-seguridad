@@ -1,0 +1,61 @@
+---
+// Encuesta "¿Te resultó útil?" solo visual: no envía nada a ningún lado.
+import { useTranslations, type Lang } from '../../i18n';
+
+interface Props {
+  lang: Lang;
+}
+const t = useTranslations(Astro.props.lang);
+---
+
+<div class="feedback" data-feedback>
+  <p class="q">{t.docs.feedbackQuestion}</p>
+  <div class="btns">
+    <button type="button" data-feedback-btn>
+      <span aria-hidden="true">👍</span>
+      {t.docs.feedbackYes}
+    </button>
+    <button type="button" data-feedback-btn>
+      <span aria-hidden="true">👎</span>
+      {t.docs.feedbackNo}
+    </button>
+  </div>
+  <p class="thanks" role="status" data-feedback-thanks></p>
+  <template data-thanks-text>{t.docs.feedbackThanks}</template>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-feedback]').forEach((box) => {
+    const msg = box.querySelector<HTMLElement>('[data-feedback-thanks]')!;
+    const text = box.querySelector<HTMLTemplateElement>('[data-thanks-text]')!.content.textContent ?? '';
+    box.querySelectorAll<HTMLButtonElement>('[data-feedback-btn]').forEach((b) =>
+      b.addEventListener('click', () => {
+        box.querySelector('.btns')?.remove();
+        msg.textContent = text;
+      }),
+    );
+  });
+</script>
+
+<style>
+  .feedback { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--color-border); }
+  .q { margin: 0 0 0.6rem; font-size: 0.88rem; font-weight: 600; }
+  .btns { display: flex; gap: 0.5rem; }
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 36px;
+    padding: 0.25rem 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--color-accent); }
+  .thanks { margin: 0; font-size: 0.9rem; color: var(--color-success-text); font-weight: 600; }
+  .thanks:empty { display: none; }
+</style>

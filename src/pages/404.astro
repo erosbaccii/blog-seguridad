@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { useTranslations, getLang, localizedPath, otherLang } from '../i18n';
+
+// Una sola página 404; elige idioma según la URL pedida.
+const lang = getLang(Astro.url.pathname.startsWith('/en/') ? 'en' : 'es');
+const t = useTranslations(lang);
+---
+
+<BaseLayout lang={lang} title={t.notFound.title} translationUrl={localizedPath(otherLang(lang), 'home')} noindex>
+  <section class="container page-head">
+    <p class="eyebrow">404</p>
+    <h1>{t.notFound.title}</h1>
+    <p class="lead">{t.notFound.body}</p>
+    <a class="btn btn-primary" href={localizedPath(lang, 'home')}>{t.notFound.back}</a>
+  </section>
+</BaseLayout>

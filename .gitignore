@@ -1,0 +1,16 @@
+# Dependencias y build
+node_modules/
+dist/
+.astro/
+
+# Variables de entorno
+.env
+.env.*
+
+# Archivos del sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Logs
+npm-debug.log*

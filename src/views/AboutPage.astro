@@ -1,0 +1,62 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { useTranslations, localizedPath, otherLang, type Lang } from '../i18n';
+import { SITE } from '../config/site';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<BaseLayout lang={lang} title={t.about.title} translationUrl={localizedPath(otherLang(lang), 'about')}>
+  <section class="container page-head about">
+    <div class="photo" role="img" aria-label={t.about.photoTodo}>
+      <span class="todo">{t.about.photoTodo}</span>
+    </div>
+    <div>
+      <h1>{t.about.title}</h1>
+      {t.about.paragraphs.map((p) => <p>{p}</p>)}
+    </div>
+  </section>
+
+  <section class="container section narrow" aria-labelledby="formacion">
+    <h2 id="formacion">{t.about.trainingTitle}</h2>
+    <ul>
+      {t.about.trainingItems.map((i) => <li>{i}</li>)}
+    </ul>
+    <p><span class="todo">{t.about.trainingTodo}</span></p>
+  </section>
+
+  <section class="container section narrow" id="contacto" aria-labelledby="contacto-titulo">
+    <h2 id="contacto-titulo">{t.about.contactTitle}</h2>
+    <p>{t.about.contactBody}</p>
+    <div class="links">
+      <a class="btn btn-primary" href={SITE.linkedin} target="_blank" rel="me noopener">
+        {t.about.linkedin} <span class="visually-hidden">{t.a11y.externalLink}</span>
+      </a>
+      <a class="btn btn-secondary" href={SITE.github} target="_blank" rel="me noopener">
+        {t.about.github} <span class="visually-hidden">{t.a11y.externalLink}</span>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .about { display: grid; gap: 1.5rem; max-width: 56rem; }
+  @media (min-width: 48rem) { .about { grid-template-columns: 12rem 1fr; align-items: start; } }
+  .photo {
+    width: 10rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 1rem;
+    border: 2px dashed var(--color-border);
+    background: var(--color-surface);
+  }
+  .narrow { max-width: 56rem; }
+  .links { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+</style>

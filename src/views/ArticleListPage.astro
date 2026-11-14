@@ -1,0 +1,154 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import Breadcrumb from '../components/docs/Breadcrumb.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import { useTranslations, localizedPath, otherLang, type Lang } from '../i18n';
+import { getArticulos } from '../lib/articulos';
+import { navArticulos } from '../lib/navegacion';
+import { CATEGORIAS, NIVELES, PUBLICOS } from '../content.config';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const listUrl = localizedPath(lang, 'articles');
+const articulos = await getArticulos(lang);
+const groups = await navArticulos(lang);
+
+const grupos = [
+  { key: 'categoria', attr: 'category', label: t.articles.filterCategory, options: CATEGORIAS.map((c) => [c, t.categories[c]]) },
+  { key: 'nivel', attr: 'nivel', label: t.articles.filterLevel, options: NIVELES.map((n) => [n, t.levels[n]]) },
+  { key: 'publico', attr: 'publico', label: t.articles.filterAudience, options: PUBLICOS.map((p) => [p, t.audiences[p]]) },
+] as const;
+---
+
+<DocsLayout
+  lang={lang}
+  title={t.articles.title}
+  description={t.articles.intro}
+  translationUrl={localizedPath(otherLang(lang), 'articles')}
+  navLabel={t.docs.sectionNavArticles}
+  groups={groups}
+  emptyText={t.docs.emptyCategory}
+  rootLink={{ label: t.docs.allArticles, href: listUrl, current: true }}
+>
+  <Breadcrumb label={t.a11y.breadcrumb} items={[{ label: t.nav.home, href: localizedPath(lang, 'home') }, { label: t.nav.articles }]} />
+  <header class="head">
+    <h1>{t.articles.title}</h1>
+    <p class="lead">{t.articles.intro}</p>
+  </header>
+
+  {
+    articulos.length === 0 ? (
+      <p class="card">{t.articles.empty}</p>
+    ) : (
+      <>
+        <div class="filters" data-filters hidden>
+          <h2 class="visually-hidden">{t.articles.filters}</h2>
+          {grupos.map((g) => (
+            <div class="group" role="group" aria-labelledby={`f-${g.key}`}>
+              <span class="group-label" id={`f-${g.key}`}>{g.label}</span>
+              <div class="opts">
+                <button type="button" class="opt" data-group={g.key} data-attr={g.attr} data-value="" aria-pressed="true">{t.articles.all}</button>
+                {g.options.map(([value, label]) => (
+                  <button type="button" class="opt" data-group={g.key} data-attr={g.attr} data-value={value} aria-pressed="false">{label}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p class="count" aria-live="polite" data-count data-template={t.articles.resultsCount}></p>
+        </div>
+
+        <ul class="grid" role="list" data-list>
+          {articulos.map((a) => (
+            <li><ArticleCard lang={lang} articulo={a} headingLevel="h2" showChips /></li>
+          ))}
+        </ul>
+        <p class="card" data-empty hidden>{t.articles.noResults}</p>
+      </>
+    )
+  }
+</DocsLayout>
+
+<script>
+  const box = document.querySelector<HTMLElement>('[data-filters]');
+  if (box) {
+    box.hidden = false; // sin JS, los filtros no se muestran y se ve la lista completa
+    const state: Record<string, string> = { categoria: '', nivel: '', publico: '' };
+    const items = [...document.querySelectorAll<HTMLLIElement>('[data-list] > li')];
+    const count = box.querySelector<HTMLElement>('[data-count]')!;
+    const empty = document.querySelector<HTMLElement>('[data-empty]')!;
+    const buttons = [...box.querySelectorAll<HTMLButtonElement>('button[data-group]')];
+
+    function apply(updateUrl = true) {
+      let visibles = 0;
+      for (const li of items) {
+        const card = li.firstElementChild as HTMLElement;
+        const ok =
+          (!state.categoria || card.dataset.category === state.categoria) &&
+          (!state.nivel || card.dataset.nivel === state.nivel) &&
+          (!state.publico || (card.dataset.publico ?? '').split(' ').includes(state.publico));
+        li.hidden = !ok;
+        if (ok) visibles++;
+      }
+      buttons.forEach((b) => b.setAttribute('aria-pressed', String(state[b.dataset.group!] === (b.dataset.value ?? ''))));
+      count.textContent = (count.dataset.template ?? '{n}').replace('{n}', String(visibles));
+      empty.hidden = visibles > 0;
+      if (updateUrl) {
+        const url = new URL(location.href);
+        for (const [k, v] of Object.entries(state)) v ? url.searchParams.set(k, v) : url.searchParams.delete(k);
+        history.replaceState(null, '', url);
+      }
+    }
+
+    // Filtros desde la URL (por ejemplo, ?categoria=que-hacer-si desde el inicio o el breadcrumb)
+    const params = new URLSearchParams(location.search);
+    for (const k of Object.keys(state)) {
+      const v = params.get(k) ?? '';
+      if (!v || buttons.some((b) => b.dataset.group === k && b.dataset.value === v)) state[k] = v;
+    }
+
+    box.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-group]');
+      if (!btn) return;
+      state[btn.dataset.group!] = btn.dataset.value ?? '';
+      apply();
+    });
+    apply(false);
+  }
+</script>
+
+<style>
+  .head { padding: 1.25rem 0 1.5rem; }
+  .filters {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+    padding: 1rem 1.1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+  .filters[hidden] { display: none; }
+  .group-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 0.4rem; }
+  .opts { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .opt {
+    min-height: 36px;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.87rem;
+    cursor: pointer;
+  }
+  .opt:hover { border-color: var(--color-accent); }
+  .opt[aria-pressed='true'] { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); font-weight: 600; }
+  .count { margin: 0; font-size: 0.87rem; color: var(--color-text-muted); }
+  .grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+  .grid > li[hidden] { display: none; }
+  @media (min-width: 40rem) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 90rem) { .grid { grid-template-columns: repeat(3, 1fr); } }
+</style>

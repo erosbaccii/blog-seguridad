@@ -1,0 +1,10 @@
+#!/bin/sh
+# Frena el commit si el email de git no es el "noreply" de GitHub (para no publicar un email real).
+email=$(git config user.email)
+case "$email" in
+  *@users.noreply.github.com) exit 0 ;;
+  *)
+    echo "✖ Commit frenado: el email de git en este repo no es el noreply de GitHub (${email:-vacío})." >&2
+    echo "  Configuralo con: git config user.email \"ID+usuario@users.noreply.github.com\"" >&2
+    exit 1 ;;
+esac

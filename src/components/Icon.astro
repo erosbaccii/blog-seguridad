@@ -1,0 +1,30 @@
+---
+import { ICONOS } from '../icons/iconos.mjs';
+
+interface Props {
+  name: string;
+  size?: number;
+  class?: string;
+  /** Si el ícono transmite información por sí solo, pasá un texto alternativo. */
+  label?: string;
+}
+const { name, size = 20, class: className, label } = Astro.props;
+const paths = ICONOS[name] ?? ICONOS['important'];
+---
+
+<svg
+  class:list={['icon', className]}
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.75"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden={label ? undefined : 'true'}
+  role={label ? 'img' : undefined}
+  aria-label={label}
+>
+  {paths.map((d) => <path d={d} />)}
+</svg>

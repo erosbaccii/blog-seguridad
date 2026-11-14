@@ -1,0 +1,78 @@
+---
+import Icon from './Icon.astro';
+import { useTranslations, formatDate, localizedPath, type Lang } from '../i18n';
+import { slugOf, type Articulo } from '../lib/articulos';
+
+interface Props {
+  lang: Lang;
+  articulo: Articulo;
+  headingLevel?: 'h2' | 'h3';
+  /** Muestra nivel y público (en el listado). */
+  showChips?: boolean;
+}
+const { lang, articulo, headingLevel = 'h3', showChips = false } = Astro.props;
+const t = useTranslations(lang);
+const { data } = articulo;
+const H = headingLevel;
+const href = localizedPath(lang, 'articles', slugOf(articulo));
+---
+
+<article
+  class="article-card"
+  data-category={data.category}
+  data-nivel={data.nivel}
+  data-publico={data.publico.join(' ')}
+>
+  <p class="cat">
+    <span class="cat-icon"><Icon name={data.category} size={20} /></span>
+    {t.categories[data.category]}
+  </p>
+  <H class="title"><a href={href}>{data.title}</a></H>
+  <p class="desc">{data.description}</p>
+  <p class="date">
+    <time datetime={data.pubDate.toISOString()}>{formatDate(data.pubDate, lang)}</time>
+    {data.draft && <span class="chip chip-draft">{t.articles.draft}</span>}
+  </p>
+  {
+    showChips && (
+      <ul class="chips" role="list">
+        <li class="chip">{t.levels[data.nivel]}</li>
+        {data.publico.map((p) => <li class="chip chip-muted">{t.audiences[p]}</li>)}
+      </ul>
+    )
+  }
+</article>
+
+<style>
+  .article-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .article-card:hover { border-color: var(--color-accent); box-shadow: 0 4px 18px -8px color-mix(in srgb, var(--color-accent) 45%, transparent); }
+  .cat { display: flex; align-items: center; gap: 0.55rem; margin: 0 0 0.75rem; font-size: 0.82rem; font-weight: 600; color: var(--color-text-muted); }
+  .cat-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 8px;
+    background: var(--color-accent-2-bg);
+    color: var(--color-accent-2-text);
+  }
+  .title { font-size: 1.12rem; line-height: 1.35; margin-bottom: 0.45rem; }
+  .title a { color: var(--color-text); }
+  .title a::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius); }
+  .title a:hover { color: var(--color-accent); }
+  .title a:focus-visible { outline: none; }
+  .article-card:has(.title a:focus-visible) { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+  .desc { color: var(--color-text-muted); font-size: 0.94rem; line-height: 1.55; }
+  .date { display: flex; align-items: center; gap: 0.5rem; margin: auto 0 0; padding-top: 0.25rem; font-size: 0.82rem; color: var(--color-text-muted); }
+  .chips { margin-top: 0.75rem; }
+</style>
