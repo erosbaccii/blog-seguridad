@@ -29,8 +29,8 @@ const shikiSinEstilosInline = {
 };
 
 export default defineConfig({
-  // TODO: reemplazar por la URL real de Cloudflare Pages (y después por el dominio propio).
-  site: 'https://erosbaccigalupi.pages.dev',
+  // URL de Cloudflare Pages. TODO: cambiar por el dominio propio cuando lo tengas.
+  site: 'https://blog-seguridad.pages.dev',
   trailingSlash: 'always',
   build: {
     format: 'directory',
