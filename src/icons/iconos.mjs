@@ -63,6 +63,8 @@ export const ICONOS = {
   'chevrons-right': ['M13 6l6 6-6 6M6 6l6 6-6 6'],
   copy: ['M9 9h11v11H9z', 'M5 15H4V4h11v1'],
   check: ['M5 12.5l4.5 4.5L19 7.5'],
+  x: ['M6 6l12 12', 'M18 6L6 18'],
+  clock: ['M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', 'M12 7.5V12l3 2'],
   download: ['M12 4v11M7.5 10.5 12 15l4.5-4.5', 'M5 19h14'],
   list: ['M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01'],
   'arrow-left': ['M19 12H5M11 6l-6 6 6 6'],

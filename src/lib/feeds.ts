@@ -3,7 +3,7 @@
 import rss from '@astrojs/rss';
 import { useTranslations, localizedPath, localizedFile, langs, defaultLang, type Lang, type RouteKey } from '../i18n';
 import { getArticulos, slugOf } from './articulos';
-import { getModulos } from './navegacion';
+import { getModulos, slugModulo } from './navegacion';
 
 const publicados = async (lang?: Lang) => (await getArticulos(lang)).filter((a) => !a.data.draft);
 
@@ -61,12 +61,13 @@ async function entradas(site: URL): Promise<Entrada[]> {
       lista.push({ lang: a.data.lang, loc: alternativas[a.data.lang], lastmod: a.data.updatedDate ?? a.data.pubDate, alternativas });
   }
 
-  // Módulos del curso (Fase 5)
-  for (const l of langs) {
-    for (const m of (await getModulos(l)).filter((m) => !m.data.draft)) {
-      const loc = abs(localizedPath(l, 'training', m.id.split('/')[0]));
-      lista.push({ lang: l, loc, alternativas: { [l]: loc } });
-    }
+  // Módulos del curso: versiones que existen, enlazadas entre idiomas
+  const mods = (await Promise.all(langs.map((l) => getModulos(l)))).flat().filter((m) => !m.data.draft);
+  for (const slug of new Set(mods.map(slugModulo))) {
+    const versiones = mods.filter((m) => slugModulo(m) === slug);
+    const alternativas = Object.fromEntries(versiones.map((m) => [m.data.lang, abs(localizedPath(m.data.lang, 'training', slug))]));
+    for (const m of versiones)
+      lista.push({ lang: m.data.lang, loc: alternativas[m.data.lang], lastmod: m.data.updatedDate ?? m.data.pubDate, alternativas });
   }
   return lista;
 }

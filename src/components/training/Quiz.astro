@@ -1,0 +1,278 @@
+---
+/*
+ * Quiz del módulo. Se corrige 100% en el navegador: no guarda ni envía nada.
+ * Sin JavaScript se ven todas las preguntas, cada una con "Ver la respuesta".
+ * Con JavaScript: una pregunta por vez, "Comprobar", explicación y puntaje final.
+ */
+import Icon from '../Icon.astro';
+import { useTranslations, fmt, type Lang } from '../../i18n';
+
+interface Pregunta {
+  question: string;
+  options: string[];
+  answer: number;
+  explanation: string;
+}
+interface Props {
+  lang: Lang;
+  id: string;
+  questions: Pregunta[];
+}
+const { lang, id, questions } = Astro.props;
+const t = useTranslations(lang);
+const total = questions.length;
+---
+
+<section
+  class="quiz"
+  aria-labelledby={`${id}-title`}
+  data-quiz
+  data-t-correct={t.quiz.correct}
+  data-t-incorrect={t.quiz.incorrect}
+  data-t-choose={t.quiz.chooseOne}
+  data-t-score={t.quiz.score}
+  data-t-perfect={t.quiz.resultPerfect}
+  data-t-good={t.quiz.resultGood}
+  data-t-review={t.quiz.resultReview}
+>
+  <h2 id={`${id}-title`}>{t.quiz.title}</h2>
+  <p class="intro">{t.quiz.intro}</p>
+
+  <ol class="questions" role="list">
+    {
+      questions.map((q, i) => (
+        <li class="q" data-q data-answer={q.answer}>
+          <fieldset>
+            <legend tabindex="-1">
+              <span class="q-n">{fmt(t.quiz.questionOf, { n: i + 1, total })}</span>
+              <span class="q-text">{q.question}</span>
+            </legend>
+            <div class="opts">
+              {q.options.map((o, j) => (
+                <label class="opt">
+                  <input type="radio" name={`${id}-q${i}`} value={j} />
+                  <span class="opt-text">{o}</span>
+                  <span class="opt-mark" data-mark aria-hidden="true">
+                    <Icon name="check" size={18} class="mark-ok" />
+                    <Icon name="x" size={18} class="mark-bad" />
+                  </span>
+                  {j === q.answer && <span class="visually-hidden" data-correct-sr hidden>({t.quiz.correctAnswer})</span>}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          {/* Sin JavaScript */}
+          <details class="nojs-answer" data-nojs>
+            <summary>{t.quiz.showAnswer}</summary>
+            <p><strong>{t.quiz.correctAnswer}:</strong> {q.options[q.answer]}</p>
+            <p>{q.explanation}</p>
+          </details>
+
+          {/* Con JavaScript: aparece al comprobar */}
+          <div class="feedback" data-q-feedback hidden>
+            <p class="verdict" data-verdict></p>
+            <p class="explanation">{q.explanation}</p>
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+
+  <p class="warn" role="alert" data-warn hidden></p>
+
+  <div class="actions" data-actions hidden>
+    <button type="button" class="btn btn-primary" data-check>{t.quiz.check}</button>
+    <button type="button" class="btn btn-primary" data-next hidden>
+      {t.quiz.next}
+      <Icon name="arrow-right" size={16} />
+    </button>
+    <button type="button" class="btn btn-primary" data-finish hidden>{t.quiz.finish}</button>
+  </div>
+
+  <div class="result" data-result hidden tabindex="-1">
+    <p class="score" data-score></p>
+    <p class="result-msg" data-result-msg></p>
+    <button type="button" class="btn" data-restart>{t.quiz.restart}</button>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-quiz]').forEach((quiz) => {
+    const d = quiz.dataset;
+    const items = [...quiz.querySelectorAll<HTMLElement>('[data-q]')];
+    const actions = quiz.querySelector<HTMLElement>('[data-actions]')!;
+    const btnCheck = quiz.querySelector<HTMLButtonElement>('[data-check]')!;
+    const btnNext = quiz.querySelector<HTMLButtonElement>('[data-next]')!;
+    const btnFinish = quiz.querySelector<HTMLButtonElement>('[data-finish]')!;
+    const warn = quiz.querySelector<HTMLElement>('[data-warn]')!;
+    const result = quiz.querySelector<HTMLElement>('[data-result]')!;
+    let actual = 0;
+    let aciertos = 0;
+
+    quiz.classList.add('js');
+    quiz.querySelectorAll('[data-nojs]').forEach((el) => el.remove());
+    actions.hidden = false;
+
+    const mostrar = (i: number, enfocar: boolean) => {
+      items.forEach((el, j) => (el.hidden = j !== i));
+      btnCheck.hidden = false;
+      btnNext.hidden = true;
+      btnFinish.hidden = true;
+      warn.hidden = true;
+      if (enfocar) items[i].querySelector<HTMLElement>('legend')?.focus();
+    };
+
+    const reiniciar = (enfocar: boolean) => {
+      actual = 0;
+      aciertos = 0;
+      items.forEach((el) => {
+        el.classList.remove('checked');
+        el.querySelectorAll<HTMLInputElement>('input').forEach((r) => {
+          r.checked = false;
+          r.disabled = false;
+        });
+        el.querySelectorAll('.opt').forEach((o) => o.classList.remove('is-ok', 'is-bad'));
+        el.querySelectorAll<HTMLElement>('[data-correct-sr]').forEach((s) => (s.hidden = true));
+        el.querySelector<HTMLElement>('[data-q-feedback]')!.hidden = true;
+      });
+      result.hidden = true;
+      actions.hidden = false;
+      mostrar(0, enfocar);
+    };
+
+    btnCheck.addEventListener('click', () => {
+      const item = items[actual];
+      const elegida = item.querySelector<HTMLInputElement>('input:checked');
+      if (!elegida) {
+        warn.textContent = d.tChoose ?? '';
+        warn.hidden = false;
+        return;
+      }
+      warn.hidden = true;
+      const correcta = Number(item.dataset.answer);
+      const ok = Number(elegida.value) === correcta;
+      if (ok) aciertos++;
+      item.classList.add('checked');
+      item.querySelectorAll<HTMLInputElement>('input').forEach((r) => {
+        r.disabled = true;
+        const opt = r.closest('.opt')!;
+        if (Number(r.value) === correcta) opt.classList.add('is-ok');
+        else if (r === elegida) opt.classList.add('is-bad');
+      });
+      item.querySelectorAll<HTMLElement>('[data-correct-sr]').forEach((s) => (s.hidden = false));
+      const fb = item.querySelector<HTMLElement>('[data-q-feedback]')!;
+      const verdict = fb.querySelector<HTMLElement>('[data-verdict]')!;
+      verdict.textContent = ok ? (d.tCorrect ?? '') : (d.tIncorrect ?? '');
+      fb.dataset.ok = String(ok);
+      fb.hidden = false;
+      btnCheck.hidden = true;
+      const ultima = actual === items.length - 1;
+      (ultima ? btnFinish : btnNext).hidden = false;
+      (ultima ? btnFinish : btnNext).focus();
+    });
+
+    btnNext.addEventListener('click', () => {
+      actual++;
+      mostrar(actual, true);
+    });
+
+    btnFinish.addEventListener('click', () => {
+      const total = items.length;
+      items.forEach((el) => (el.hidden = true));
+      actions.hidden = true;
+      quiz.querySelector<HTMLElement>('[data-score]')!.textContent = (d.tScore ?? '')
+        .replace('{ok}', String(aciertos))
+        .replace('{total}', String(total));
+      const msg = aciertos === total ? d.tPerfect : aciertos / total >= 0.6 ? d.tGood : d.tReview;
+      quiz.querySelector<HTMLElement>('[data-result-msg]')!.textContent = msg ?? '';
+      result.dataset.level = aciertos === total ? 'perfect' : aciertos / total >= 0.6 ? 'good' : 'review';
+      result.hidden = false;
+      result.focus();
+    });
+
+    quiz.querySelector('[data-restart]')!.addEventListener('click', () => reiniciar(true));
+
+    quiz.addEventListener('change', () => (warn.hidden = true));
+    reiniciar(false);
+  });
+</script>
+
+<style>
+  .quiz {
+    max-width: var(--maxw-prose);
+    margin-top: 3rem;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+  }
+  .quiz [hidden] { display: none !important; }
+  @media (max-width: 39.99rem) { .quiz { padding: 1.1rem; } }
+  .quiz h2 { margin-top: 0; }
+  .intro { color: var(--color-text-muted); margin: 0 0 1.25rem; }
+  .questions { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.75rem; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: 0.9rem; font-weight: 600; font-size: 1.05rem; line-height: 1.5; }
+  legend:focus { outline: none; }
+  legend:focus-visible { outline: 2px solid var(--color-focus, var(--color-accent)); outline-offset: 4px; border-radius: 4px; }
+  .q-n {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-accent-2-text);
+  }
+  .q-text { overflow-wrap: anywhere; }
+  .opts { display: grid; gap: 0.55rem; }
+  .opt {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .opt:hover { border-color: var(--color-accent); }
+  .opt:has(input:checked) { border-color: var(--color-accent); background: var(--color-accent-bg, var(--color-bg)); }
+  .opt:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .opt input { margin: 0.3rem 0 0; accent-color: var(--color-accent); width: 1.05rem; height: 1.05rem; }
+  .opt:has(input:disabled) { cursor: default; }
+  .opt-mark { display: inline-flex; margin-top: 0.15rem; }
+  .opt-mark :global(svg) { display: none; }
+  .opt.is-ok, .opt.is-ok:has(input:checked) { border-color: var(--color-success); background: var(--color-success-bg); }
+  .opt.is-ok :global(.mark-ok) { display: block; color: var(--color-success-text, var(--color-success)); }
+  .opt.is-bad, .opt.is-bad:has(input:checked) { border-color: var(--color-danger); background: var(--color-danger-bg); }
+  .opt.is-bad :global(.mark-bad) { display: block; color: var(--color-danger-text, var(--color-danger)); }
+
+  .nojs-answer { margin-top: 0.75rem; }
+  .nojs-answer summary { cursor: pointer; color: var(--color-accent); font-weight: 600; }
+  .nojs-answer p { margin: 0.5rem 0 0; }
+
+  .feedback {
+    margin-top: 0.9rem;
+    padding: 0.85rem 1rem;
+    border-left: 3px solid var(--color-danger);
+    border-radius: var(--radius-sm);
+    background: var(--color-danger-bg);
+  }
+  .feedback[data-ok='true'] { border-left-color: var(--color-success); background: var(--color-success-bg); }
+  .verdict { margin: 0 0 0.35rem; font-weight: 700; color: var(--color-danger-text, var(--color-danger)); }
+  .feedback[data-ok='true'] .verdict { color: var(--color-success-text, var(--color-success)); }
+  .explanation { margin: 0; }
+
+  .warn { margin: 1rem 0 0; color: var(--color-warning-text, var(--color-warning)); font-weight: 600; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
+  .actions .btn { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+  .result { text-align: center; padding: 1rem 0 0.25rem; }
+  .result:focus { outline: none; }
+  .score { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.4rem; }
+  .result-msg { margin: 0 0 1.25rem; color: var(--color-text-muted); }
+</style>

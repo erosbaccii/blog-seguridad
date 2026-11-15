@@ -3,7 +3,7 @@ import DocsLayout from '../layouts/DocsLayout.astro';
 import Breadcrumb from '../components/docs/Breadcrumb.astro';
 import ModuleBadge from '../components/ModuleBadge.astro';
 import { useTranslations, localizedPath, otherLang, fmt, type Lang } from '../i18n';
-import { navEntrenamiento, getModulos } from '../lib/navegacion';
+import { navEntrenamiento, getModulos, slugModulo } from '../lib/navegacion';
 
 interface Props {
   lang: Lang;
@@ -45,8 +45,12 @@ const modulos = await getModulos(lang);
             <ModuleBadge n={m.data.order} size={44} />
             <div>
               <p class="eyebrow">{fmt(t.training.moduleLabel, { n: m.data.order })}</p>
-              <a href={localizedPath(lang, 'training', m.id.split('/')[0])}>{m.data.title}</a>
+              <a class="mod-link" href={localizedPath(lang, 'training', slugModulo(m))}>{m.data.title}</a>
               <p>{m.data.description}</p>
+              <p class="mod-meta">
+                {fmt(t.training.duration, { n: m.data.minutes })}
+                {m.data.quiz.length > 0 && <> · {fmt(t.training.questions, { n: m.data.quiz.length })}</>}
+              </p>
             </div>
           </li>
         ))}
@@ -61,4 +65,6 @@ const modulos = await getModulos(lang);
   .modules { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; max-width: var(--maxw-prose); }
   .modules li { display: flex; gap: 1rem; align-items: flex-start; }
   .modules p { margin: 0; }
+  .mod-link { font-weight: 600; font-size: 1.05rem; }
+  .mod-meta { margin-top: 0.35rem !important; font-size: 0.85rem; color: var(--color-text-muted); }
 </style>

@@ -1,0 +1,161 @@
+---
+import { render } from 'astro:content';
+import { SITE } from '../config/site';
+import DocsLayout from '../layouts/DocsLayout.astro';
+import Breadcrumb from '../components/docs/Breadcrumb.astro';
+import Toc from '../components/docs/Toc.astro';
+import Feedback from '../components/docs/Feedback.astro';
+import Icon from '../components/Icon.astro';
+import ModuleBadge from '../components/ModuleBadge.astro';
+import Quiz from '../components/training/Quiz.astro';
+import { useTranslations, fmt, localizedPath, otherLang, type Lang } from '../i18n';
+import { navEntrenamiento, slugModulo, type Modulo } from '../lib/navegacion';
+
+interface Props {
+  lang: Lang;
+  entry: Modulo;
+  alternate?: Modulo;
+  prev?: Modulo;
+  next?: Modulo;
+}
+const { lang, entry, alternate, prev, next } = Astro.props;
+const t = useTranslations(lang);
+const other = otherLang(lang);
+const slug = slugModulo(entry);
+const data = entry.data;
+const href = localizedPath(lang, 'training', slug);
+const courseUrl = localizedPath(lang, 'training');
+// Si el módulo no está traducido, el selector de idioma lleva al curso en el otro idioma
+const translationUrl = alternate ? localizedPath(other, 'training', slug) : localizedPath(other, 'training');
+const { Content, headings } = await render(entry);
+const groups = await navEntrenamiento(lang, href);
+
+// El quiz aparece en el índice "En esta página"
+const quizId = 'quiz';
+const tocHeadings = data.quiz.length ? [...headings, { depth: 2, slug: quizId, text: t.quiz.title }] : headings;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'LearningResource',
+  name: data.title,
+  description: data.description,
+  inLanguage: t.meta.dateLocale,
+  learningResourceType: 'Module',
+  timeRequired: `PT${data.minutes}M`,
+  datePublished: data.pubDate.toISOString(),
+  dateModified: (data.updatedDate ?? data.pubDate).toISOString(),
+  url: new URL(href, Astro.site).href,
+  isPartOf: { '@type': 'Course', name: t.training.courseName, url: new URL(courseUrl, Astro.site).href },
+  author: { '@type': 'Person', name: SITE.author, url: SITE.linkedin },
+  isAccessibleForFree: true,
+};
+---
+
+<DocsLayout
+  lang={lang}
+  title={data.title}
+  description={data.description}
+  translationUrl={translationUrl}
+  hasTranslation={!!alternate}
+  ogType="article"
+  publishedTime={data.pubDate}
+  modifiedTime={data.updatedDate}
+  jsonLd={jsonLd}
+  navLabel={t.docs.sectionNavTraining}
+  groups={groups}
+  emptyText={t.training.comingSoon}
+  rootLink={{ label: t.training.title, href: courseUrl }}
+  headings={tocHeadings}
+>
+  <Breadcrumb
+    label={t.a11y.breadcrumb}
+    items={[
+      { label: t.nav.home, href: localizedPath(lang, 'home') },
+      { label: t.nav.training, href: courseUrl },
+      { label: t.training.courseName, href: courseUrl },
+    ]}
+  />
+  <article class="modulo">
+    <header class="mod-head">
+      <div class="badge-row">
+        <ModuleBadge n={data.order} size={40} />
+        <p class="eyebrow">{t.training.courseName} · {fmt(t.training.moduleLabel, { n: data.order })}</p>
+      </div>
+      <h1>{data.title}</h1>
+      <p class="lead">{data.description}</p>
+      <ul class="chips" role="list">
+        {data.draft && <li class="chip chip-draft">{t.articles.draft}</li>}
+        <li class="chip chip-muted">
+          <Icon name="clock" size={14} />
+          {fmt(t.training.duration, { n: data.minutes })}
+        </li>
+        {data.quiz.length > 0 && <li class="chip chip-muted">{fmt(t.training.questions, { n: data.quiz.length })}</li>}
+      </ul>
+    </header>
+
+    <div class="only-below-xl">
+      <Toc headings={tocHeadings} title={t.docs.onThisPage} variant="dropdown" />
+    </div>
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    {data.quiz.length > 0 && <div id={quizId}><Quiz lang={lang} id={`${slug}-quiz`} questions={data.quiz} /></div>}
+
+    <nav class="pager" aria-label={`${t.training.prevModule} / ${t.training.nextModule}`}>
+      {
+        prev ? (
+          <a class="pg prev" href={localizedPath(lang, 'training', slugModulo(prev))} rel="prev">
+            <span class="pg-label"><Icon name="arrow-left" size={16} />{t.training.prevModule}</span>
+            <span class="pg-title">{prev.data.title}</span>
+          </a>
+        ) : (
+          <a class="pg prev" href={courseUrl}>
+            <span class="pg-label"><Icon name="arrow-left" size={16} />{t.training.backToCourse}</span>
+            <span class="pg-title">{t.training.courseName}</span>
+          </a>
+        )
+      }
+      {
+        next && (
+          <a class="pg next" href={localizedPath(lang, 'training', slugModulo(next))} rel="next">
+            <span class="pg-label">{t.training.nextModule}<Icon name="arrow-right" size={16} /></span>
+            <span class="pg-title">{next.data.title}</span>
+          </a>
+        )
+      }
+    </nav>
+
+    <div class="only-below-xl">
+      <Feedback lang={lang} />
+    </div>
+  </article>
+</DocsLayout>
+
+<style>
+  .modulo { max-width: calc(var(--maxw-prose) + 2rem); }
+  .mod-head { padding: 1.25rem 0 1.5rem; max-width: var(--maxw-prose); }
+  .badge-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .eyebrow { margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--color-text-muted); }
+  h1 { font-size: clamp(1.9rem, 1.5rem + 1.8vw, 2.5rem); margin-bottom: 0.5rem; }
+  .chips :global(svg) { vertical-align: -2px; margin-right: 0.25rem; }
+  #quiz { scroll-margin-top: calc(var(--header-h) + 1rem); }
+
+  .pager { display: grid; gap: 0.75rem; margin-top: 2.5rem; max-width: var(--maxw-prose); }
+  @media (min-width: 40rem) { .pager { grid-template-columns: 1fr 1fr; } }
+  .pg {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+  .pg:hover { border-color: var(--color-accent); text-decoration: none; }
+  .pg.next { text-align: right; grid-column: 2; }
+  .pg-label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--color-text-muted); }
+  .next .pg-label { justify-content: flex-end; }
+  .pg-title { font-weight: 600; color: var(--color-accent); }
+  @media (max-width: 39.99rem) { .pg.next { grid-column: auto; } }
+</style>

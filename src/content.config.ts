@@ -47,18 +47,35 @@ const articulos = defineCollection({
 });
 
 /*
- * Módulos del curso anti-phishing (se completan en la Fase 5):
+ * Módulos del curso anti-phishing:
  *   src/content/modulos/<slug>/es.md  y  en.md
+ * El quiz va en el frontmatter; "answer" es la posición (desde 0) de la opción correcta.
  */
+const pregunta = z
+  .object({
+    question: z.string().min(1),
+    options: z.array(z.string().min(1)).min(2).max(5),
+    answer: z.number().int().nonnegative(),
+    explanation: z.string().min(1),
+  })
+  .refine((q) => q.answer < q.options.length, {
+    message: '"answer" tiene que ser la posición de una de las opciones (empieza en 0).',
+    path: ['answer'],
+  });
+
 const modulos = defineCollection({
   loader: glob({ pattern: '*/{es,en}.{md,mdx}', base: './src/content/modulos' }),
   schema: z.object({
     title: z.string().min(1),
     description: z.string().min(1).max(220),
     order: z.number().int().positive(),
+    minutes: z.number().int().positive(),
+    pubDate: z.coerce.date(),
+    updatedDate: z.coerce.date().optional(),
     lang: z.enum(['es', 'en']),
     translationOf: z.string().optional(),
     draft: z.boolean().default(false),
+    quiz: z.array(pregunta).default([]),
   }),
 });
 

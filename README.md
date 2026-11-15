@@ -60,3 +60,20 @@ Texto.
 ```
 
 Tipos: `tip`, `important`, `warning`, `danger` (o en español: `sugerencia`, `importante`, `advertencia`, `peligro`).
+
+## Módulos de entrenamiento
+
+Cada módulo es una carpeta en `src/content/modulos/<slug>/` con `es.md` y `en.md`. El quiz va en el frontmatter y se corrige en el navegador (no se envía nada):
+
+```yaml
+order: 1          # posición en el curso
+minutes: 12       # duración estimada
+pubDate: 2026-11-14
+quiz:
+  - question: ¿Pregunta?
+    options: [Opción A, Opción B, Opción C]
+    answer: 1     # posición de la correcta, empezando en 0 (acá, "Opción B")
+    explanation: Por qué es la correcta.
+```
+
+Sin JavaScript, cada pregunta muestra un "Ver la respuesta".

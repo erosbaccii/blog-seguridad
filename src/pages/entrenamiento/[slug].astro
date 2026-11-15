@@ -1,0 +1,10 @@
+---
+import ModulePage from '../../views/ModulePage.astro';
+import { getRutasModulos } from '../../lib/navegacion';
+
+export async function getStaticPaths() {
+  return getRutasModulos('es');
+}
+---
+
+<ModulePage lang="es" {...Astro.props} />
